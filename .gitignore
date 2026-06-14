@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+backend/.venv/
+backend/.env
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Data & uploads
+data/*.db
+data/*.db-journal
+uploads/*.pdf
+uploads/*.doc
+uploads/*.docx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agent / workspace internals
+.agent_context/
+.kimi/
+.multica/
+AGENTS.md

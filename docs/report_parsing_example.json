@@ -1,0 +1,40 @@
+{
+  "report_date": "2024-05-12",
+  "source_text_excerpt": "白细胞计数 6.2 10^9/L 参考范围 3.5-9.5...",
+  "extracted_biomarkers": [
+    {
+      "original_name": "白细胞计数",
+      "original_value": "6.2",
+      "original_unit": "10^9/L",
+      "confidence": 0.95
+    },
+    {
+      "original_name": "空腹血糖",
+      "original_value": "5.4",
+      "original_unit": "mmol/L",
+      "confidence": 0.92
+    }
+  ],
+  "normalized_values": [
+    {
+      "biomarker_code": "WBC",
+      "biomarker_name": "白细胞计数",
+      "value": 6.2,
+      "unit": "10^9/L",
+      "reference_low": 3.5,
+      "reference_high": 9.5,
+      "status": "normal",
+      "is_reviewed": false
+    },
+    {
+      "biomarker_code": "FBG",
+      "biomarker_name": "空腹血糖",
+      "value": 5.4,
+      "unit": "mmol/L",
+      "reference_low": 3.9,
+      "reference_high": 6.1,
+      "status": "normal",
+      "is_reviewed": false
+    }
+  ]
+}

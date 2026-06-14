@@ -1,0 +1,137 @@
+{
+  "version": "1.0.0",
+  "biomarkers": [
+    {
+      "code": "WBC",
+      "name": "白细胞计数",
+      "aliases": ["白细胞", "WBC", "white blood cell", "白血球"],
+      "unit_standard": "10^9/L",
+      "unit_aliases": ["10^9/L", "10e9/L", "*10^9/L", "g/L"],
+      "category": "血常规",
+      "reference_low": 3.5,
+      "reference_high": 9.5,
+      "direction": "both",
+      "description": "白细胞计数反映机体免疫状态。"
+    },
+    {
+      "code": "RBC",
+      "name": "红细胞计数",
+      "aliases": ["红细胞", "RBC", "red blood cell", "红血球"],
+      "unit_standard": "10^12/L",
+      "unit_aliases": ["10^12/L", "10e12/L", "*10^12/L"],
+      "category": "血常规",
+      "reference_low": 4.0,
+      "reference_high": 5.5,
+      "direction": "both",
+      "description": "红细胞计数反映血液携氧能力。"
+    },
+    {
+      "code": "HGB",
+      "name": "血红蛋白",
+      "aliases": ["血红蛋白", "HGB", "Hb", "hemoglobin"],
+      "unit_standard": "g/L",
+      "unit_aliases": ["g/L", "g/l", "g/dL"],
+      "category": "血常规",
+      "reference_low": 120,
+      "reference_high": 160,
+      "direction": "both",
+      "description": "血红蛋白反映贫血情况。"
+    },
+    {
+      "code": "PLT",
+      "name": "血小板计数",
+      "aliases": ["血小板", "PLT", "platelet"],
+      "unit_standard": "10^9/L",
+      "unit_aliases": ["10^9/L", "10e9/L", "*10^9/L"],
+      "category": "血常规",
+      "reference_low": 100,
+      "reference_high": 300,
+      "direction": "both",
+      "description": "血小板参与凝血过程。"
+    },
+    {
+      "code": "FBG",
+      "name": "空腹血糖",
+      "aliases": ["空腹血糖", "FBG", "FPG", "fasting blood glucose", "血糖"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l"],
+      "category": "生化",
+      "reference_low": 3.9,
+      "reference_high": 6.1,
+      "direction": "high",
+      "description": "空腹血糖反映糖代谢状态。"
+    },
+    {
+      "code": "TC",
+      "name": "总胆固醇",
+      "aliases": ["总胆固醇", "TC", "total cholesterol", "胆固醇"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": null,
+      "reference_high": 5.2,
+      "direction": "high",
+      "description": "总胆固醇反映血脂水平。"
+    },
+    {
+      "code": "TG",
+      "name": "甘油三酯",
+      "aliases": ["甘油三酯", "TG", "triglyceride"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": null,
+      "reference_high": 1.7,
+      "direction": "high",
+      "description": "甘油三酯反映血脂水平。"
+    },
+    {
+      "code": "ALT",
+      "name": "丙氨酸氨基转移酶",
+      "aliases": ["丙氨酸氨基转移酶", "ALT", "谷丙转氨酶", "GPT"],
+      "unit_standard": "U/L",
+      "unit_aliases": ["U/L", "u/L", "IU/L"],
+      "category": "生化",
+      "reference_low": 0,
+      "reference_high": 40,
+      "direction": "high",
+      "description": "ALT 主要反映肝细胞损伤。"
+    },
+    {
+      "code": "AST",
+      "name": "天门冬氨酸氨基转移酶",
+      "aliases": ["天门冬氨酸氨基转移酶", "AST", "谷草转氨酶", "GOT"],
+      "unit_standard": "U/L",
+      "unit_aliases": ["U/L", "u/L", "IU/L"],
+      "category": "生化",
+      "reference_low": 0,
+      "reference_high": 40,
+      "direction": "high",
+      "description": "AST 主要反映肝细胞或心肌损伤。"
+    },
+    {
+      "code": "CREA",
+      "name": "肌酐",
+      "aliases": ["肌酐", "CREA", "Cr", "creatinine", "血肌酐"],
+      "unit_standard": "μmol/L",
+      "unit_aliases": ["μmol/L", "umol/L", "μmol/l", "umol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 57,
+      "reference_high": 97,
+      "direction": "both",
+      "description": "肌酐反映肾功能。"
+    },
+    {
+      "code": "UA",
+      "name": "尿酸",
+      "aliases": ["尿酸", "UA", "uric acid", "血尿酸"],
+      "unit_standard": "μmol/L",
+      "unit_aliases": ["μmol/L", "umol/L", "μmol/l", "umol/l"],
+      "category": "生化",
+      "reference_low": 208,
+      "reference_high": 428,
+      "direction": "high",
+      "description": "尿酸与嘌呤代谢相关。"
+    }
+  ]
+}
