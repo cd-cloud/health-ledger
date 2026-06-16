@@ -98,6 +98,42 @@ python run.py
 
 后端默认运行在 `http://127.0.0.1:8000`，API 文档见 `http://127.0.0.1:8000/docs`。
 
+### API 文档导出
+
+FastAPI 原生提供交互式 API 文档：
+
+- Swagger UI：`http://127.0.0.1:8000/docs`
+- ReDoc：`http://127.0.0.1:8000/redoc`
+- OpenAPI JSON：`http://127.0.0.1:8000/openapi.json`
+
+如需导出静态 OpenAPI JSON 文件，可在后端启动后执行：
+
+```bash
+curl http://127.0.0.1:8000/openapi.json > docs/openapi.json
+```
+
+### 运行测试
+
+#### 后端单元测试
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+当前覆盖：
+- `normalizer`：指标匹配、单位换算、状态判定、字典一致性。
+- `report_parser`：报告解析、日期提取、错误状态、LLM 与 fallback 路径。
+- `routers`：健康检查、指标 CURD、批量更新、导出、报告上传/解析/删除、趋势查询。
+
+#### 前端构建检查
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
 ### 2. 启动前端
 
 ```bash
