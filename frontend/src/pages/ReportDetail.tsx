@@ -1,30 +1,48 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, Save } from 'lucide-react'
+import { ArrowLeft, Check, Save, Undo2, CheckSquare, Square } from 'lucide-react'
 
 import { getReport, parseReport } from '../api/reports'
-import { updateBiomarkerValue } from '../api/biomarkers'
+import { updateBiomarkerValue, batchUpdateBiomarkerValues } from '../api/biomarkers'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorState from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import type { ReportDetail, BiomarkerValue } from '../types'
+
+interface UndoState {
+  message: string
+  items: { id: number; is_reviewed: boolean }[]
+}
 
 export default function ReportDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [report, setReport] = useState<ReportDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [parsing, setParsing] = useState(false)
   const [savingId, setSavingId] = useState<number | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [undoStack, setUndoStack] = useState<UndoState[]>([])
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
-    const data = await getReport(Number(id))
-    setReport(data)
-    setLoading(false)
-  }
+    setError(null)
+    try {
+      const data = await getReport(Number(id))
+      setReport(data)
+      setSelectedIds(new Set())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载报告详情失败')
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
     load()
-  }, [id])
+  }, [load])
 
   async function handleParse() {
     if (!report) return
@@ -32,6 +50,8 @@ export default function ReportDetail() {
     try {
       await parseReport(report.id)
       await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '解析失败')
     } finally {
       setParsing(false)
     }
@@ -42,6 +62,8 @@ export default function ReportDetail() {
     try {
       await updateBiomarkerValue(value.id, { is_reviewed: !value.is_reviewed })
       await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '操作失败')
     } finally {
       setSavingId(null)
     }
@@ -56,13 +78,76 @@ export default function ReportDetail() {
           : { status: newValue as 'normal' | 'high' | 'low' }
       await updateBiomarkerValue(valueId, payload)
       await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '保存失败')
     } finally {
       setSavingId(null)
     }
   }
 
-  if (loading) return <div className="text-gray-500">加载中...</div>
-  if (!report) return <div className="text-gray-500">报告不存在</div>
+  function toggleSelection(valueId: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(valueId)) {
+        next.delete(valueId)
+      } else {
+        next.add(valueId)
+      }
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (!report) return
+    if (selectedIds.size === report.values.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(report.values.map((v) => v.id)))
+    }
+  }
+
+  async function batchReview(reviewed: boolean) {
+    if (!report || selectedIds.size === 0) return
+
+    const previousStates = report.values
+      .filter((v) => selectedIds.has(v.id))
+      .map((v) => ({ id: v.id, is_reviewed: v.is_reviewed }))
+
+    const items = Array.from(selectedIds).map((valueId) => ({ id: valueId, is_reviewed: reviewed }))
+
+    try {
+      await batchUpdateBiomarkerValues(items)
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          message: `批量${reviewed ? '校对' : '取消校对'} ${items.length} 项指标`,
+          items: previousStates,
+        },
+      ])
+      await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '批量操作失败')
+    }
+  }
+
+  async function handleUndo() {
+    if (undoStack.length === 0 || !report) return
+
+    const lastAction = undoStack[undoStack.length - 1]
+    try {
+      await batchUpdateBiomarkerValues(lastAction.items)
+      setUndoStack((prev) => prev.slice(0, -1))
+      await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '撤销失败')
+    }
+  }
+
+  if (loading) return <LoadingSpinner message="加载报告详情..." />
+  if (error) return <ErrorState title="报告详情加载失败" error={error} onRetry={load} />
+  if (!report) return <ErrorState title="报告不存在" error="无法找到该报告。" />
+
+  const allSelected = report.values.length > 0 && selectedIds.size === report.values.length
 
   return (
     <div className="space-y-6">
@@ -92,21 +177,71 @@ export default function ReportDetail() {
       </div>
 
       <div className="card">
-        <h3 className="text-lg font-semibold mb-4">提取指标（人工校对）</h3>
-        {report.values.length === 0 ? (
-          <div className="text-gray-500">
-            <p>暂无指标数据。</p>
-            {report.status !== 'parsed' && (
-              <button onClick={handleParse} className="text-primary hover:underline mt-2">
-                立即解析
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <h3 className="text-lg font-semibold">提取指标（人工校对）</h3>
+          {report.values.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={toggleSelectAll}
+                className="btn-secondary text-xs"
+                title={allSelected ? '取消全选' : '全选'}
+              >
+                {allSelected ? <CheckSquare className="w-4 h-4 mr-1" /> : <Square className="w-4 h-4 mr-1" />}
+                {allSelected ? '取消全选' : '全选'}
               </button>
-            )}
-          </div>
+              <button
+                onClick={() => batchReview(true)}
+                disabled={selectedIds.size === 0}
+                className="btn-primary text-xs disabled:opacity-50"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                批量校对
+              </button>
+              <button
+                onClick={() => batchReview(false)}
+                disabled={selectedIds.size === 0}
+                className="btn-secondary text-xs disabled:opacity-50"
+              >
+                <Square className="w-4 h-4 mr-1" />
+                批量取消
+              </button>
+              <button
+                onClick={handleUndo}
+                disabled={undoStack.length === 0}
+                className="btn-secondary text-xs disabled:opacity-50"
+              >
+                <Undo2 className="w-4 h-4 mr-1" />
+                撤销{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {report.values.length === 0 ? (
+          <EmptyState
+            title="暂无指标数据"
+            description="当前报告没有提取到指标。"
+            action={
+              report.status !== 'parsed' && (
+                <button onClick={handleParse} className="btn-primary">
+                  立即解析
+                </button>
+              )
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">指标</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">原始值</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">标准值</th>
@@ -118,6 +253,14 @@ export default function ReportDetail() {
               <tbody className="divide-y divide-gray-200">
                 {report.values.map((value) => (
                   <tr key={value.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(value.id)}
+                        onChange={() => toggleSelection(value.id)}
+                        className="rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                    </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
                       {value.biomarker.name}
                       <p className="text-xs text-gray-500 font-normal">

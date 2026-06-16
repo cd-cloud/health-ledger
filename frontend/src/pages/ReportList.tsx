@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, RefreshCw, FileText } from 'lucide-react'
+import { Trash2, RefreshCw } from 'lucide-react'
 
 import { listReports, deleteReport, parseReport } from '../api/reports'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorState from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import type { Report } from '../types'
 
 function StatusBadge({ status }: { status: string }) {
@@ -22,12 +25,19 @@ function StatusBadge({ status }: { status: string }) {
 export default function ReportList() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
-    const res = await listReports()
-    setReports(res.items)
-    setLoading(false)
+    setError(null)
+    try {
+      const res = await listReports()
+      setReports(res.items)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载报告列表失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -36,16 +46,25 @@ export default function ReportList() {
 
   async function handleDelete(id: number) {
     if (!confirm('确定删除该报告？原始 PDF 也将被删除。')) return
-    await deleteReport(id)
-    await load()
+    try {
+      await deleteReport(id)
+      await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '删除失败')
+    }
   }
 
   async function handleParse(id: number) {
-    await parseReport(id)
-    await load()
+    try {
+      await parseReport(id)
+      await load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '解析失败')
+    }
   }
 
-  if (loading) return <div className="text-gray-500">加载中...</div>
+  if (loading) return <LoadingSpinner message="加载报告列表..." />
+  if (error) return <ErrorState title="报告列表加载失败" error={error} onRetry={load} />
 
   return (
     <div className="space-y-6">
@@ -57,10 +76,15 @@ export default function ReportList() {
       </div>
 
       {reports.length === 0 ? (
-        <div className="card text-center py-12">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">暂无报告，请先上传。</p>
-        </div>
+        <EmptyState
+          title="暂无报告"
+          description="请先上传体检报告。"
+          action={
+            <Link to="/upload" className="btn-primary">
+              上传报告
+            </Link>
+          }
+        />
       ) : (
         <div className="card overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">

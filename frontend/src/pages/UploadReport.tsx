@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, FileCheck } from 'lucide-react'
+import { UploadCloud, FileCheck, AlertCircle, Loader2 } from 'lucide-react'
 
 import { uploadReport, parseReport } from '../api/reports'
 
@@ -9,7 +9,8 @@ export default function UploadReport() {
   const [reportDate, setReportDate] = useState('')
   const [uploading, setUploading] = useState(false)
   const [parsing, setParsing] = useState(false)
-  const [message, setMessage] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
@@ -17,39 +18,43 @@ export default function UploadReport() {
     const selected = e.target.files?.[0]
     if (selected && selected.type === 'application/pdf') {
       setFile(selected)
-      setMessage('')
+      setError(null)
     } else {
-      setMessage('请选择 PDF 文件')
+      setFile(null)
+      setError('请选择 PDF 文件')
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!file) {
-      setMessage('请先选择文件')
+      setError('请先选择文件')
       return
     }
 
     setUploading(true)
-    setMessage('')
+    setError(null)
+    setSuccess(null)
     try {
       const report = await uploadReport(file, reportDate || undefined)
       setUploading(false)
       setParsing(true)
-      setMessage('文件已上传，正在解析指标...')
+      setSuccess('文件已上传，正在解析指标...')
       try {
         await parseReport(report.id)
-        setMessage('解析完成，正在跳转...')
+        setSuccess('解析完成，正在跳转...')
         navigate(`/reports/${report.id}`)
       } catch (err) {
-        setMessage('文件上传成功，但解析失败，请进入报告详情手动重试。')
+        setError('文件上传成功，但解析失败，请进入报告详情手动重试。')
         navigate(`/reports/${report.id}`)
       }
     } catch (err) {
       setUploading(false)
-      setMessage(err instanceof Error ? err.message : '上传失败')
+      setError(err instanceof Error ? err.message : '上传失败')
     }
   }
+
+  const isBusy = uploading || parsing
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -69,6 +74,7 @@ export default function UploadReport() {
               accept="application/pdf"
               onChange={handleFileChange}
               className="hidden"
+              disabled={isBusy}
             />
             {file ? (
               <div className="flex flex-col items-center gap-2">
@@ -95,16 +101,27 @@ export default function UploadReport() {
               value={reportDate}
               onChange={(e) => setReportDate(e.target.value)}
               className="input"
+              disabled={isBusy}
             />
           </div>
 
-          {message && (
-            <div className="text-sm text-gray-700 bg-gray-100 rounded-md p-3">{message}</div>
+          {error && (
+            <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 rounded-md p-3">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-md p-3">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>{success}</span>
+            </div>
           )}
 
           <button
             type="submit"
-            disabled={uploading || parsing || !file}
+            disabled={isBusy || !file}
             className="btn-primary w-full disabled:opacity-50"
           >
             {uploading ? '上传中...' : parsing ? '解析中...' : '上传并解析'}

@@ -27,6 +27,32 @@ export async function updateBiomarkerValue(
   return data
 }
 
+export interface BatchUpdateItem {
+  id: number
+  value?: number
+  unit?: string
+  status?: 'normal' | 'high' | 'low'
+  is_reviewed?: boolean
+}
+
+export async function batchUpdateBiomarkerValues(
+  items: BatchUpdateItem[],
+): Promise<BiomarkerValue[]> {
+  const { data } = await api.patch('/biomarkers/values/batch', { items })
+  return data
+}
+
+export async function exportBiomarkerValues(
+  format: 'csv' | 'json' = 'csv',
+  filters: ValueFilters = {},
+): Promise<Blob> {
+  const { data } = await api.get('/biomarkers/values/export', {
+    params: { format, ...filters },
+    responseType: 'blob',
+  })
+  return data
+}
+
 export async function getAbnormalSummary(): Promise<BiomarkerValue[]> {
   const { data } = await api.get('/biomarkers/summary/abnormal')
   return data

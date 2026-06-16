@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { TrendingUp, AlertCircle } from 'lucide-react'
+import { TrendingUp, AlertCircle, Download } from 'lucide-react'
 
-import { listBiomarkerValues } from '../api/biomarkers'
+import { listBiomarkerValues, exportBiomarkerValues } from '../api/biomarkers'
+import { downloadBlob } from '../utils/download'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorState from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import type { BiomarkerValue } from '../types'
 
 function StatusBadge({ status }: { status: string | null }) {
@@ -26,18 +30,27 @@ export default function BiomarkerList({ abnormalOnly = false }: { abnormalOnly?:
 
   const [values, setValues] = useState<BiomarkerValue[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('')
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
+  async function load() {
+    setLoading(true)
+    setError(null)
+    try {
       const valuesRes = await listBiomarkerValues({
         abnormal_only: isAbnormalPage,
         reviewed_only: false,
       })
       setValues(valuesRes)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载指标列表失败')
+    } finally {
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
     load()
   }, [isAbnormalPage])
 
@@ -45,7 +58,23 @@ export default function BiomarkerList({ abnormalOnly = false }: { abnormalOnly?:
     ? values.filter((v) => v.status === filterStatus)
     : values
 
-  if (loading) return <div className="text-gray-500">加载中...</div>
+  async function handleExport(format: 'csv' | 'json') {
+    setExporting(true)
+    try {
+      const blob = await exportBiomarkerValues(format, {
+        abnormal_only: isAbnormalPage,
+      })
+      const extension = format === 'csv' ? 'csv' : 'json'
+      downloadBlob(blob, `biomarker_values_${isAbnormalPage ? 'abnormal' : 'all'}.${extension}`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '导出失败')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  if (loading) return <LoadingSpinner message="加载指标列表..." />
+  if (error) return <ErrorState title="指标列表加载失败" error={error} onRetry={load} />
 
   return (
     <div className="space-y-6">
@@ -68,15 +97,40 @@ export default function BiomarkerList({ abnormalOnly = false }: { abnormalOnly?:
             <option value="low">偏低</option>
             <option value="normal">正常</option>
           </select>
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={exporting || values.length === 0}
+            className="btn-secondary text-xs disabled:opacity-50"
+          >
+            <Download className="w-4 h-4 mr-1" />
+            CSV
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            disabled={exporting || values.length === 0}
+            className="btn-secondary text-xs disabled:opacity-50"
+          >
+            JSON
+          </button>
         </div>
       </div>
 
       {displayedValues.length === 0 ? (
-        <div className="card text-center py-12">
-          <p className="text-gray-500">
-            {isAbnormalPage ? '暂无异常指标记录。' : '暂无指标记录。'}
-          </p>
-        </div>
+        <EmptyState
+          title={isAbnormalPage ? '暂无异常指标' : '暂无指标记录'}
+          description={
+            isAbnormalPage
+              ? '当前没有已校对的异常指标记录。'
+              : '请先上传报告并完成解析。'
+          }
+          action={
+            !isAbnormalPage && (
+              <Link to="/upload" className="btn-primary">
+                上传报告
+              </Link>
+            )
+          }
+        />
       ) : (
         <div className="card overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">

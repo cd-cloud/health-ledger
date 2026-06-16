@@ -148,7 +148,7 @@
     {
       "code": "HDL-C",
       "name": "高密度脂蛋白胆固醇",
-      "aliases": ["高密度脂蛋白胆固醇", "HDL-C", "HDL", "高密度脂蛋白"],
+      "aliases": ["高密度脂蛋白胆固醇", "HDL-C", "HDL", "高密度脂蛋白", "high-density lipoprotein", "high density lipoprotein"],
       "unit_standard": "mmol/L",
       "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
       "category": "生化",
@@ -160,7 +160,7 @@
     {
       "code": "LDL-C",
       "name": "低密度脂蛋白胆固醇",
-      "aliases": ["低密度脂蛋白胆固醇", "LDL-C", "LDL", "低密度脂蛋白"],
+      "aliases": ["低密度脂蛋白胆固醇", "LDL-C", "LDL", "低密度脂蛋白", "low-density lipoprotein", "low density lipoprotein"],
       "unit_standard": "mmol/L",
       "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
       "category": "生化",
@@ -208,7 +208,7 @@
     {
       "code": "GGT",
       "name": "γ-谷氨酰转肽酶",
-      "aliases": ["γ-谷氨酰转肽酶", "GGT", "γ-GT", "谷氨酰转肽酶"],
+      "aliases": ["γ-谷氨酰转肽酶", "GGT", "γ-GT", "谷氨酰转肽酶", "gamma-glutamyl transferase", "gamma glutamyl transferase"],
       "unit_standard": "U/L",
       "unit_aliases": ["U/L", "u/L", "IU/L"],
       "category": "生化",

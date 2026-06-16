@@ -44,6 +44,18 @@ class BiomarkerValueUpdate(BaseModel):
     is_reviewed: Optional[bool] = None
 
 
+class BiomarkerValueBatchItem(BaseModel):
+    id: int
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    status: Optional[str] = None
+    is_reviewed: Optional[bool] = None
+
+
+class BiomarkerValueBatchUpdate(BaseModel):
+    items: List[BiomarkerValueBatchItem]
+
+
 class BiomarkerValueOut(BiomarkerValueBase):
     model_config = ConfigDict(from_attributes=True)
     id: int

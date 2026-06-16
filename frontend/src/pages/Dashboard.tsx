@@ -4,6 +4,9 @@ import { FileText, Activity, AlertCircle, TrendingUp } from 'lucide-react'
 
 import { listReports } from '../api/reports'
 import { listBiomarkers, getAbnormalSummary } from '../api/biomarkers'
+import LoadingSpinner from '../components/LoadingSpinner'
+import ErrorState from '../components/ErrorState'
+import EmptyState from '../components/EmptyState'
 import type { Report, Biomarker, BiomarkerValue } from '../types'
 
 function StatusBadge({ status }: { status: string }) {
@@ -25,26 +28,33 @@ export default function Dashboard() {
   const [biomarkers, setBiomarkers] = useState<Biomarker[]>([])
   const [abnormal, setAbnormal] = useState<BiomarkerValue[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  async function load() {
+    setLoading(true)
+    setError(null)
+    try {
+      const [reportsRes, biomarkersRes, abnormalRes] = await Promise.all([
+        listReports(),
+        listBiomarkers(),
+        getAbnormalSummary(),
+      ])
+      setReports(reportsRes.items)
+      setBiomarkers(biomarkersRes)
+      setAbnormal(abnormalRes)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载概览数据失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [reportsRes, biomarkersRes, abnormalRes] = await Promise.all([
-          listReports(),
-          listBiomarkers(),
-          getAbnormalSummary(),
-        ])
-        setReports(reportsRes.items)
-        setBiomarkers(biomarkersRes)
-        setAbnormal(abnormalRes)
-      } finally {
-        setLoading(false)
-      }
-    }
     load()
   }, [])
 
-  if (loading) return <div className="text-gray-500">加载中...</div>
+  if (loading) return <LoadingSpinner message="加载概览数据..." />
+  if (error) return <ErrorState title="概览加载失败" error={error} onRetry={load} />
 
   return (
     <div className="space-y-6">
@@ -98,7 +108,15 @@ export default function Dashboard() {
             </Link>
           </div>
           {reports.length === 0 ? (
-            <p className="text-gray-500">暂无报告，请先上传。</p>
+            <EmptyState
+              title="暂无报告"
+              description="请先上传体检报告。"
+              action={
+                <Link to="/upload" className="btn-primary">
+                  上传报告
+                </Link>
+              }
+            />
           ) : (
             <ul className="divide-y divide-gray-100">
               {reports.slice(0, 5).map((report) => (
@@ -122,7 +140,7 @@ export default function Dashboard() {
             </Link>
           </div>
           {abnormal.length === 0 ? (
-            <p className="text-gray-500">暂无已校对的异常指标。</p>
+            <EmptyState title="暂无异常指标" description="暂无已校对的异常指标记录。" />
           ) : (
             <ul className="divide-y divide-gray-100">
               {abnormal.slice(0, 5).map((value) => (
