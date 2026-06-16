@@ -14,6 +14,9 @@ from app.services.report_parser import parse_report
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+# 单文件大小限制：50 MB
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
 
 @router.post("/upload", response_model=schemas.ReportOut, status_code=status.HTTP_201_CREATED)
 def upload_report(
@@ -21,10 +24,16 @@ def upload_report(
     report_date: str | None = Form(None),
     db: Session = Depends(get_db),
 ):
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
+    if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are allowed",
+            detail="请选择要上传的文件",
+        )
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="仅支持 PDF 文件，请上传 .pdf 格式的体检报告",
         )
 
     ext = Path(file.filename).suffix
@@ -37,10 +46,26 @@ def upload_report(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {exc}",
+            detail=f"保存文件失败：{exc}",
         ) from exc
     finally:
         file.file.close()
+
+    # 空文件检查
+    file_size = stored_path.stat().st_size
+    if file_size == 0:
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="上传的文件为空，请检查文件是否损坏",
+        )
+
+    if file_size > MAX_UPLOAD_SIZE:
+        stored_path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"文件大小超过 {MAX_UPLOAD_SIZE // 1024 // 1024} MB 限制",
+        )
 
     parsed_date = None
     if report_date:
@@ -82,14 +107,24 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
 def parse_report_endpoint(report_id: int, db: Session = Depends(get_db)):
     report = db.query(models.Report).filter(models.Report.id == report_id).first()
     if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(status_code=404, detail="报告不存在")
 
     try:
         result = parse_report(db, report_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"报告解析失败：{exc}",
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"服务暂时不可用：{exc}",
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Parsing failed: {exc}",
+            detail=f"报告解析失败：{exc}",
         ) from exc
 
     return result

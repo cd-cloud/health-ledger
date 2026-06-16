@@ -18,6 +18,7 @@
 - 前端：React + TypeScript + Vite + Tailwind CSS + Recharts
 - 后端：FastAPI + SQLAlchemy + SQLite
 - PDF 提取：pdfplumber / pypdf
+- OCR 兜底（可选）：PaddleOCR / Tesseract
 - AI：LLMProvider 抽象 + Kimi 默认实现
 
 ## 目录结构
@@ -35,15 +36,49 @@
 
 需要 Python 3.10+ 和 Node.js 18+。
 
-后端可选配置环境变量（`.env` 或在启动前 export）：
+### 环境变量
+
+后端通过环境变量（`.env` 文件或启动前 `export`）进行配置。推荐在项目根目录创建 `.env`：
 
 ```bash
+# Kimi / Moonshot AI（用于指标提取与趋势分析）
 KIMI_API_KEY=your_kimi_api_key
 KIMI_BASE_URL=https://api.moonshot.cn/v1
 KIMI_MODEL=moonshot-v1-8k
+
+# 可选：切换 LLM 提供商，当前仅支持 kimi
+# LLM_PROVIDER=kimi
+
+# 可选：自定义数据库路径
+# DATABASE_URL=sqlite:///data/healthtracker.db
 ```
 
-未配置 `KIMI_API_KEY` 时，系统将使用规则化 fallback 提取并生成本地趋势描述。
+| 变量名 | 说明 | 默认值 |
+|---|---|---|
+| `KIMI_API_KEY` | Kimi / Moonshot API Key。未配置时将使用规则化 fallback 提取并生成本地趋势描述。 | 空字符串 |
+| `KIMI_BASE_URL` | Kimi API 基础地址 | `https://api.moonshot.cn/v1` |
+| `KIMI_MODEL` | 使用的模型名称 | `moonshot-v1-8k` |
+| `LLM_PROVIDER` | LLM 提供商，当前仅支持 `kimi` | `kimi` |
+| `DATABASE_URL` | SQLite 数据库 URL | `sqlite:///data/healthtracker.db` |
+
+### OCR 扫描件支持（可选）
+
+对于扫描件或图片型 PDF，系统支持 OCR 文本兜底。需要额外安装依赖及系统工具：
+
+1. 安装系统依赖：
+   - **Windows**：安装 [poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases) 并将 `bin` 目录加入系统 PATH。
+   - **Linux (Debian/Ubuntu)**：`sudo apt-get install poppler-utils tesseract-ocr tesseract-ocr-chi-sim`
+   - **macOS**：`brew install poppler tesseract tesseract-lang`
+
+2. 安装 Python OCR 依赖（取消 `backend/requirements.txt` 中对应行的注释后执行）：
+
+   ```bash
+   cd backend
+   pip install pdf2image==1.17.0 paddleocr==2.9.1 pytesseract==0.3.13 Pillow==11.0.0
+   ```
+
+   - 中文报告推荐使用 **PaddleOCR**，识别效果较好但安装包较大。
+   - 轻量场景可使用 **Tesseract** 作为回退。
 
 ## 启动命令
 
@@ -81,6 +116,14 @@ npm run dev
 4. 进入「报告列表」-> 报告详情，人工校对指标数值和状态。
 5. 校对完成后，指标数据进入趋势分析。
 6. 在「指标列表」或「异常指标」页查看数据，点击「趋势」查看趋势图与 AI 分析。
+
+## 异常处理说明
+
+- 上传非 PDF 文件：前端/后端均会提示「仅支持 PDF 文件」。
+- 上传空文件：后端会校验文件大小并返回错误。
+- PDF 文本为空：可能是扫描件，系统会尝试 OCR 兜底（需安装依赖）；未安装 OCR 时返回明确提示。
+- 解析失败：报告状态标记为 `error`，可在报告列表查看错误信息。
+- LLM 调用失败：自动回退到规则化提取，并记录日志；不会阻断报告解析。
 
 ## 注意事项
 

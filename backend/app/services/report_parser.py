@@ -64,20 +64,31 @@ def parse_report(
     try:
         text = extract_text_from_pdf(report.stored_path)
         if not text.strip():
-            raise ValueError("PDF text is empty")
+            raise ValueError(
+                "未能从 PDF 中提取到文本，可能是扫描件或图片 PDF；"
+                "如需识别扫描件，请安装 OCR 依赖（见 README）"
+            )
 
         # 尝试提取报告日期
         date_str = extract_report_date(text)
         if date_str and not report.report_date:
             report.report_date = datetime.fromisoformat(date_str)
 
+        extracted: List[Dict[str, Any]] = []
         if not provider.is_available():
             logger.warning("LLM provider not available; using fallback demo extraction")
             extracted = _fallback_extract(text, normalizer)
         else:
-            extracted = provider.extract_biomarkers(
-                text, normalizer.list_biomarkers()
-            )
+            try:
+                extracted = provider.extract_biomarkers(
+                    text, normalizer.list_biomarkers()
+                )
+            except Exception as exc:
+                logger.warning(
+                    "LLM extraction failed (%s); falling back to rule-based extraction",
+                    exc,
+                )
+                extracted = _fallback_extract(text, normalizer)
 
         normalized = normalizer.normalize_extracted(extracted)
 

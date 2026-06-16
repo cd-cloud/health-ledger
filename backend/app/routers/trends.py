@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -96,7 +97,16 @@ def analyze_trend(
                 trend_points=trend_points,
             )
         except Exception as exc:
-            raise HTTPException(status_code=500, detail=f"AI analysis failed: {exc}") from exc
+            logger = logging.getLogger(__name__)
+            logger.warning("AI trend analysis failed: %s; using local fallback", exc)
+            first, last = values[0], values[-1]
+            direction = "上升" if last.value > first.value else "下降" if last.value < first.value else "持平"
+            analysis = (
+                f"从 {first.report.report_date.date() if first.report else '最早'} 到 "
+                f"{last.report.report_date.date() if last.report else '最近'}，"
+                f"{biomarker.name} 整体呈{direction}趋势（{first.value} -> {last.value} {biomarker.unit_standard}）。"
+                "AI 分析暂时不可用，已切换为本地摘要。建议结合临床情况由医生进一步评估。"
+            )
 
     return schemas.TrendAnalysisOut(
         biomarker_code=biomarker.code,

@@ -7,12 +7,24 @@ from app.config import DOCS_DIR
 
 logger = logging.getLogger(__name__)
 
+# 原始单位 -> 标准单位的换算系数（乘以该系数）
+# 系数基于临床常用换算关系，保留足够精度。
 UNIT_CONVERSIONS: Dict[str, Dict[str, float]] = {
     "HGB": {"g/dL": 10.0},  # g/dL -> g/L
-    "TC": {"mg/dL": 1.0 / 38.67},  # mg/dL -> mmol/L (approx)
+    "TC": {"mg/dL": 1.0 / 38.67},  # mg/dL -> mmol/L
     "TG": {"mg/dL": 1.0 / 88.57},
+    "HDL-C": {"mg/dL": 1.0 / 38.67},
+    "LDL-C": {"mg/dL": 1.0 / 38.67},
+    "GLU": {"mg/dL": 1.0 / 18.0},
+    "FBG": {"mg/dL": 1.0 / 18.0},
     "CREA": {"mg/dL": 88.42},
+    "BUN": {"mg/dL": 1.0 / 2.8},
     "UA": {"mg/dL": 59.48},
+    "CA": {"mg/dL": 1.0 / 4.0},
+    "TBIL": {"mg/dL": 17.1},
+    "DBIL": {"mg/dL": 17.1},
+    "TP": {"g/dL": 10.0},
+    "ALB": {"g/dL": 10.0},
 }
 
 
@@ -41,7 +53,15 @@ class BiomarkerNormalizer:
 
     @staticmethod
     def _normalize_text(text: str) -> str:
-        return text.lower().replace(" ", "").replace("(", "").replace(")", "").replace("*", "")
+        """统一文本：小写、去空白、去括号、去星号、统一希腊字母 μ。"""
+        return (
+            text.lower()
+            .replace(" ", "")
+            .replace("(", "")
+            .replace(")", "")
+            .replace("*", "")
+            .replace("μ", "u")
+        )
 
     def match_biomarker(self, original_name: str) -> Optional[Dict[str, Any]]:
         key = self._normalize_text(original_name)
@@ -92,6 +112,10 @@ class BiomarkerNormalizer:
         unit_key = self._normalize_text(original_unit)
         if not unit_key:
             return definition["unit_standard"]
+
+        standard_unit = definition["unit_standard"]
+        if unit_key == self._normalize_text(standard_unit):
+            return standard_unit
 
         for alias in definition.get("unit_aliases", []):
             if unit_key == self._normalize_text(alias):

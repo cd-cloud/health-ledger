@@ -1,12 +1,12 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "biomarkers": [
     {
       "code": "WBC",
       "name": "白细胞计数",
-      "aliases": ["白细胞", "WBC", "white blood cell", "白血球"],
+      "aliases": ["白细胞", "WBC", "white blood cell", "白血球", "白细胞数"],
       "unit_standard": "10^9/L",
-      "unit_aliases": ["10^9/L", "10e9/L", "*10^9/L", "g/L"],
+      "unit_aliases": ["10^9/L", "10e9/L", "*10^9/L", "g/L", "10^9/l"],
       "category": "血常规",
       "reference_low": 3.5,
       "reference_high": 9.5,
@@ -16,9 +16,9 @@
     {
       "code": "RBC",
       "name": "红细胞计数",
-      "aliases": ["红细胞", "RBC", "red blood cell", "红血球"],
+      "aliases": ["红细胞", "RBC", "red blood cell", "红血球", "红细胞数"],
       "unit_standard": "10^12/L",
-      "unit_aliases": ["10^12/L", "10e12/L", "*10^12/L"],
+      "unit_aliases": ["10^12/L", "10e12/L", "*10^12/L", "10^12/l"],
       "category": "血常规",
       "reference_low": 4.0,
       "reference_high": 5.5,
@@ -40,9 +40,9 @@
     {
       "code": "PLT",
       "name": "血小板计数",
-      "aliases": ["血小板", "PLT", "platelet"],
+      "aliases": ["血小板", "PLT", "platelet", "血小板数"],
       "unit_standard": "10^9/L",
-      "unit_aliases": ["10^9/L", "10e9/L", "*10^9/L"],
+      "unit_aliases": ["10^9/L", "10e9/L", "*10^9/L", "10^9/l"],
       "category": "血常规",
       "reference_low": 100,
       "reference_high": 300,
@@ -50,16 +50,76 @@
       "description": "血小板参与凝血过程。"
     },
     {
+      "code": "HCT",
+      "name": "红细胞压积",
+      "aliases": ["红细胞压积", "HCT", "红细胞比容", "hematocrit"],
+      "unit_standard": "%",
+      "unit_aliases": ["%", "L/L"],
+      "category": "血常规",
+      "reference_low": 37,
+      "reference_high": 50,
+      "direction": "both",
+      "description": "红细胞压积反映血液中红细胞所占体积比例。"
+    },
+    {
+      "code": "MCV",
+      "name": "平均红细胞体积",
+      "aliases": ["平均红细胞体积", "MCV", "mean corpuscular volume"],
+      "unit_standard": "fL",
+      "unit_aliases": ["fL", "fl"],
+      "category": "血常规",
+      "reference_low": 80,
+      "reference_high": 100,
+      "direction": "both",
+      "description": "MCV 反映单个红细胞平均体积。"
+    },
+    {
+      "code": "MCH",
+      "name": "平均红细胞血红蛋白含量",
+      "aliases": ["平均红细胞血红蛋白含量", "MCH", "mean corpuscular hemoglobin"],
+      "unit_standard": "pg",
+      "unit_aliases": ["pg", "Pg"],
+      "category": "血常规",
+      "reference_low": 27,
+      "reference_high": 34,
+      "direction": "both",
+      "description": "MCH 反映单个红细胞平均血红蛋白含量。"
+    },
+    {
       "code": "FBG",
       "name": "空腹血糖",
-      "aliases": ["空腹血糖", "FBG", "FPG", "fasting blood glucose", "血糖"],
+      "aliases": ["空腹血糖", "FBG", "FPG", "fasting blood glucose", "空腹血糖值"],
       "unit_standard": "mmol/L",
-      "unit_aliases": ["mmol/L", "mmol/l"],
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
       "category": "生化",
       "reference_low": 3.9,
       "reference_high": 6.1,
       "direction": "high",
       "description": "空腹血糖反映糖代谢状态。"
+    },
+    {
+      "code": "GLU",
+      "name": "血糖",
+      "aliases": ["血糖", "GLU", "glucose", "随机血糖", "餐后血糖"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 3.9,
+      "reference_high": 7.8,
+      "direction": "high",
+      "description": "血糖反映血液中葡萄糖浓度。"
+    },
+    {
+      "code": "HbA1c",
+      "name": "糖化血红蛋白",
+      "aliases": ["糖化血红蛋白", "HbA1c", "HbA1C", "糖化"],
+      "unit_standard": "%",
+      "unit_aliases": ["%", "percent"],
+      "category": "生化",
+      "reference_low": 4,
+      "reference_high": 6,
+      "direction": "high",
+      "description": "糖化血红蛋白反映近 2-3 个月平均血糖水平。"
     },
     {
       "code": "TC",
@@ -76,7 +136,7 @@
     {
       "code": "TG",
       "name": "甘油三酯",
-      "aliases": ["甘油三酯", "TG", "triglyceride"],
+      "aliases": ["甘油三酯", "TG", "triglyceride", "血脂甘油三酯"],
       "unit_standard": "mmol/L",
       "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
       "category": "生化",
@@ -86,9 +146,33 @@
       "description": "甘油三酯反映血脂水平。"
     },
     {
+      "code": "HDL-C",
+      "name": "高密度脂蛋白胆固醇",
+      "aliases": ["高密度脂蛋白胆固醇", "HDL-C", "HDL", "高密度脂蛋白"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 1.03,
+      "reference_high": null,
+      "direction": "low",
+      "description": "HDL-C 俗称好胆固醇，偏低增加心血管风险。"
+    },
+    {
+      "code": "LDL-C",
+      "name": "低密度脂蛋白胆固醇",
+      "aliases": ["低密度脂蛋白胆固醇", "LDL-C", "LDL", "低密度脂蛋白"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": null,
+      "reference_high": 3.4,
+      "direction": "high",
+      "description": "LDL-C 俗称坏胆固醇，偏高增加心血管风险。"
+    },
+    {
       "code": "ALT",
       "name": "丙氨酸氨基转移酶",
-      "aliases": ["丙氨酸氨基转移酶", "ALT", "谷丙转氨酶", "GPT"],
+      "aliases": ["丙氨酸氨基转移酶", "ALT", "谷丙转氨酶", "GPT", "alanine aminotransferase", "alanine transaminase"],
       "unit_standard": "U/L",
       "unit_aliases": ["U/L", "u/L", "IU/L"],
       "category": "生化",
@@ -100,7 +184,7 @@
     {
       "code": "AST",
       "name": "天门冬氨酸氨基转移酶",
-      "aliases": ["天门冬氨酸氨基转移酶", "AST", "谷草转氨酶", "GOT"],
+      "aliases": ["天门冬氨酸氨基转移酶", "AST", "谷草转氨酶", "GOT", "aspartate aminotransferase", "aspartate transaminase"],
       "unit_standard": "U/L",
       "unit_aliases": ["U/L", "u/L", "IU/L"],
       "category": "生化",
@@ -108,6 +192,78 @@
       "reference_high": 40,
       "direction": "high",
       "description": "AST 主要反映肝细胞或心肌损伤。"
+    },
+    {
+      "code": "ALP",
+      "name": "碱性磷酸酶",
+      "aliases": ["碱性磷酸酶", "ALP", "alkaline phosphatase"],
+      "unit_standard": "U/L",
+      "unit_aliases": ["U/L", "u/L", "IU/L"],
+      "category": "生化",
+      "reference_low": 40,
+      "reference_high": 150,
+      "direction": "both",
+      "description": "ALP 主要反映肝胆和骨骼系统。"
+    },
+    {
+      "code": "GGT",
+      "name": "γ-谷氨酰转肽酶",
+      "aliases": ["γ-谷氨酰转肽酶", "GGT", "γ-GT", "谷氨酰转肽酶"],
+      "unit_standard": "U/L",
+      "unit_aliases": ["U/L", "u/L", "IU/L"],
+      "category": "生化",
+      "reference_low": 10,
+      "reference_high": 60,
+      "direction": "high",
+      "description": "GGT 主要反映肝胆系统。"
+    },
+    {
+      "code": "TBIL",
+      "name": "总胆红素",
+      "aliases": ["总胆红素", "TBIL", "total bilirubin", "胆红素"],
+      "unit_standard": "μmol/L",
+      "unit_aliases": ["μmol/L", "umol/L", "μmol/l", "umol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 3.4,
+      "reference_high": 20.5,
+      "direction": "high",
+      "description": "总胆红素反映肝胆功能和溶血情况。"
+    },
+    {
+      "code": "DBIL",
+      "name": "直接胆红素",
+      "aliases": ["直接胆红素", "DBIL", "direct bilirubin"],
+      "unit_standard": "μmol/L",
+      "unit_aliases": ["μmol/L", "umol/L", "μmol/l", "umol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 0,
+      "reference_high": 6.8,
+      "direction": "high",
+      "description": "直接胆红素反映肝胆排泄功能。"
+    },
+    {
+      "code": "TP",
+      "name": "总蛋白",
+      "aliases": ["总蛋白", "TP", "total protein"],
+      "unit_standard": "g/L",
+      "unit_aliases": ["g/L", "g/l", "g/dL"],
+      "category": "生化",
+      "reference_low": 60,
+      "reference_high": 85,
+      "direction": "both",
+      "description": "总蛋白反映肝脏合成功能和营养状态。"
+    },
+    {
+      "code": "ALB",
+      "name": "白蛋白",
+      "aliases": ["白蛋白", "ALB", "albumin"],
+      "unit_standard": "g/L",
+      "unit_aliases": ["g/L", "g/l", "g/dL"],
+      "category": "生化",
+      "reference_low": 35,
+      "reference_high": 55,
+      "direction": "both",
+      "description": "白蛋白反映肝脏合成功能和营养状态。"
     },
     {
       "code": "CREA",
@@ -122,16 +278,100 @@
       "description": "肌酐反映肾功能。"
     },
     {
+      "code": "BUN",
+      "name": "尿素氮",
+      "aliases": ["尿素氮", "BUN", "blood urea nitrogen", "尿素"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 2.6,
+      "reference_high": 7.5,
+      "direction": "high",
+      "description": "尿素氮反映肾功能和蛋白质代谢。"
+    },
+    {
       "code": "UA",
       "name": "尿酸",
       "aliases": ["尿酸", "UA", "uric acid", "血尿酸"],
       "unit_standard": "μmol/L",
-      "unit_aliases": ["μmol/L", "umol/L", "μmol/l", "umol/l"],
+      "unit_aliases": ["μmol/L", "umol/L", "μmol/l", "umol/l", "mg/dL"],
       "category": "生化",
       "reference_low": 208,
       "reference_high": 428,
       "direction": "high",
       "description": "尿酸与嘌呤代谢相关。"
+    },
+    {
+      "code": "CA",
+      "name": "钙",
+      "aliases": ["钙", "CA", "calcium", "血钙"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mg/dL"],
+      "category": "生化",
+      "reference_low": 2.1,
+      "reference_high": 2.6,
+      "direction": "both",
+      "description": "血钙反映体内钙代谢状态。"
+    },
+    {
+      "code": "K",
+      "name": "钾",
+      "aliases": ["钾", "K", "potassium", "血钾"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mEq/L"],
+      "category": "生化",
+      "reference_low": 3.5,
+      "reference_high": 5.3,
+      "direction": "both",
+      "description": "血钾反映电解质平衡。"
+    },
+    {
+      "code": "NA",
+      "name": "钠",
+      "aliases": ["钠", "NA", "sodium", "血钠"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mEq/L"],
+      "category": "生化",
+      "reference_low": 137,
+      "reference_high": 147,
+      "direction": "both",
+      "description": "血钠反映电解质平衡。"
+    },
+    {
+      "code": "CL",
+      "name": "氯",
+      "aliases": ["氯", "CL", "chloride", "血氯"],
+      "unit_standard": "mmol/L",
+      "unit_aliases": ["mmol/L", "mmol/l", "mEq/L"],
+      "category": "生化",
+      "reference_low": 99,
+      "reference_high": 110,
+      "direction": "both",
+      "description": "血氯反映电解质平衡。"
+    },
+    {
+      "code": "CRP",
+      "name": "C反应蛋白",
+      "aliases": ["C反应蛋白", "CRP", "C-reactive protein"],
+      "unit_standard": "mg/L",
+      "unit_aliases": ["mg/L", "mg/l"],
+      "category": "炎症",
+      "reference_low": 0,
+      "reference_high": 10,
+      "direction": "high",
+      "description": "CRP 反映炎症或感染状态。"
+    },
+    {
+      "code": "ESR",
+      "name": "红细胞沉降率",
+      "aliases": ["红细胞沉降率", "ESR", "血沉", "erythrocyte sedimentation rate"],
+      "unit_standard": "mm/h",
+      "unit_aliases": ["mm/h", "mm/1h"],
+      "category": "炎症",
+      "reference_low": 0,
+      "reference_high": 20,
+      "direction": "high",
+      "description": "ESR 反映炎症活动度。"
     }
   ]
 }
