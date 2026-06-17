@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  ocr-test:
+    build: .
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app
+      - LLM_PROVIDER=kimi
+    command: ["pytest", "tests/test_ocr.py", "-v"]

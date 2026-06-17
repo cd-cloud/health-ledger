@@ -1,0 +1,11 @@
+-r requirements.txt
+
+# OCR 依赖：扫描件 PDF 需要 poppler + tesseract/paddleocr
+pdf2image==1.17.0
+pytesseract==0.3.13
+paddleocr==2.9.1
+paddlepaddle==3.0.0
+Pillow==11.0.0
+
+# 测试辅助：从图片生成扫描件 PDF
+img2pdf==0.5.1

@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
@@ -163,7 +163,7 @@ def _apply_value_update(value: models.BiomarkerValue, payload: schemas.Biomarker
         value.status = payload.status
     if payload.is_reviewed is not None:
         value.is_reviewed = payload.is_reviewed
-        value.reviewed_at = datetime.utcnow() if payload.is_reviewed else None
+        value.reviewed_at = datetime.now(timezone.utc) if payload.is_reviewed else None
 
 
 @router.get("/summary/abnormal", response_model=List[schemas.BiomarkerValueOut])

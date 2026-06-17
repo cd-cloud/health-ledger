@@ -1,4 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from functools import partial
+
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, ForeignKey, Index
 from sqlalchemy.orm import relationship
 
@@ -15,8 +17,10 @@ class Report(Base):
     report_date = Column(DateTime, nullable=True)
     status = Column(String(50), default="pending", nullable=False)  # pending / parsed / error
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    _utc_now = partial(datetime.now, timezone.utc)
+
+    created_at = Column(DateTime, default=_utc_now, nullable=False)
+    updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
 
     values = relationship("BiomarkerValue", back_populates="report", cascade="all, delete-orphan")
 
@@ -59,7 +63,7 @@ class BiomarkerValue(Base):
 
     is_reviewed = Column(Boolean, default=False, nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=partial(datetime.now, timezone.utc), nullable=False)
 
     report = relationship("Report", back_populates="values")
     biomarker = relationship("Biomarker", back_populates="values")

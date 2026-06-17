@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    environment:
+      - DATABASE_URL=sqlite:////app/data/healthtracker.db
+      - LLM_PROVIDER=kimi

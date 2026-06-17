@@ -12,10 +12,8 @@ python-dateutil==2.9.0
 # 测试
 pytest==9.0.3
 
-# OCR 兜底（可选）：扫描件 PDF 需要安装以下依赖及系统工具
+# OCR 兜底（可选）：扫描件 PDF 需要安装以下依赖及系统工具。
+# 完整 OCR 环境请使用 requirements-ocr.txt + Dockerfile，或运行：
+#   docker compose -f backend/docker-compose.ocr-test.yml up --build
 # pdf2image 需要系统安装 poppler（Windows: poppler for windows / Linux: poppler-utils）
 # paddleocr 为中文 OCR 首选，体积较大；tesseract 为轻量回退
-# pdf2image==1.17.0
-# paddleocr==2.9.1
-# pytesseract==0.3.13
-# Pillow==11.0.0
