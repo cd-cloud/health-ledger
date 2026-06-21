@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from app import models
+from app.services.auth import hash_password
 from app.services.llm_provider import LLMProvider
 from app.services.normalizer import BiomarkerNormalizer
 from app.services.report_parser import parse_report
@@ -27,9 +28,22 @@ class FakeLLMProvider(LLMProvider):
 
 
 @pytest.fixture
-def sample_report(db, tmp_path):
+def test_user(db):
+    user = models.User(
+        username="parseruser",
+        hashed_password=hash_password("testpass"),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def sample_report(db, tmp_path, test_user):
     """创建一份测试用的 PDF 报告。"""
     report = models.Report(
+        user_id=test_user.id,
         filename="test.pdf",
         original_name="test.pdf",
         stored_path=str(tmp_path / "test.pdf"),
@@ -91,7 +105,7 @@ class TestParseReport:
         # 最小 PDF 中无法可靠提取，但至少应完成解析流程
         assert sample_report.status == "parsed"
 
-    def test_parse_report_date_extraction(self, db, tmp_path, sample_biomarkers):
+    def test_parse_report_date_extraction(self, db, tmp_path, sample_biomarkers, test_user):
         stored_path = tmp_path / "dated.pdf"
         stored_path.write_bytes(
             b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
@@ -101,6 +115,7 @@ class TestParseReport:
             b"xref\ntrailer<</Size 5/Root 1 0 R>>\nstartxref\n0\n%%EOF"
         )
         report = models.Report(
+            user_id=test_user.id,
             filename="dated.pdf",
             original_name="dated.pdf",
             stored_path=str(stored_path),

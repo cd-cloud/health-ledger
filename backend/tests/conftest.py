@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app import models
 from app.database import Base, get_db
 from app.main import app
+from app.services.auth import hash_password
 from app.services.normalizer import BiomarkerNormalizer
 from app.services.report_parser import ensure_biomarkers_in_db
 from fastapi.testclient import TestClient
@@ -80,3 +81,27 @@ def sample_biomarkers(db):
         )
     db.commit()
     return normalizer.list_biomarkers()
+
+
+@pytest.fixture(scope="function")
+def test_user(db):
+    """创建一个测试用户并返回。"""
+    user = models.User(
+        username="testuser",
+        hashed_password=hash_password("testpass"),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+def auth_client(client, test_user):
+    """返回已登录测试用户的 TestClient。"""
+    response = client.post(
+        "/auth/login",
+        json={"username": test_user.username, "password": "testpass"},
+    )
+    assert response.status_code == 200
+    yield client

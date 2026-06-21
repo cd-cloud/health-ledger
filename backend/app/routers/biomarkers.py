@@ -10,8 +10,19 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.services.auth import get_current_user
 
 router = APIRouter(prefix="/biomarkers", tags=["biomarkers"])
+
+
+def _user_values_query(db: Session, user_id: int):
+    """返回仅属于当前用户的指标数值查询。"""
+    return (
+        db.query(models.BiomarkerValue)
+        .join(models.Report)
+        .filter(models.Report.user_id == user_id)
+        .join(models.Biomarker)
+    )
 
 
 @router.get("", response_model=List[schemas.BiomarkerOut])
@@ -27,8 +38,9 @@ def list_biomarker_values(
     abnormal_only: bool = False,
     reviewed_only: bool = False,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    query = db.query(models.BiomarkerValue).join(models.Biomarker)
+    query = _user_values_query(db, current_user.id)
 
     if report_id is not None:
         query = query.filter(models.BiomarkerValue.report_id == report_id)
@@ -53,9 +65,10 @@ def export_biomarker_values(
     abnormal_only: bool = False,
     reviewed_only: bool = False,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    """导出指标数值为 CSV 或 JSON（预留接口）。"""
-    query = db.query(models.BiomarkerValue).join(models.Biomarker)
+    """导出当前用户的指标数值为 CSV 或 JSON。"""
+    query = _user_values_query(db, current_user.id)
 
     if report_id is not None:
         query = query.filter(models.BiomarkerValue.report_id == report_id)
@@ -113,12 +126,13 @@ def export_biomarker_values(
 def batch_update_biomarker_values(
     payload: schemas.BiomarkerValueBatchUpdate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
-    """批量更新指标数值，常用于报告详情页的批量校对。"""
+    """批量更新当前用户的指标数值，常用于报告详情页的批量校对。"""
     updated = []
     for item in payload.items:
         value = (
-            db.query(models.BiomarkerValue)
+            _user_values_query(db, current_user.id)
             .filter(models.BiomarkerValue.id == item.id)
             .first()
         )
@@ -138,9 +152,10 @@ def update_biomarker_value(
     value_id: int,
     payload: schemas.BiomarkerValueUpdate,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     value = (
-        db.query(models.BiomarkerValue)
+        _user_values_query(db, current_user.id)
         .filter(models.BiomarkerValue.id == value_id)
         .first()
     )
@@ -167,13 +182,18 @@ def _apply_value_update(value: models.BiomarkerValue, payload: schemas.Biomarker
 
 
 @router.get("/summary/abnormal", response_model=List[schemas.BiomarkerValueOut])
-def abnormal_summary(db: Session = Depends(get_db)):
-    """返回每个指标最新一次已校对的异常值（用于 Dashboard）。"""
+def abnormal_summary(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """返回当前用户每个指标最新一次已校对的异常值（用于 Dashboard）。"""
     subq = (
         db.query(
             models.BiomarkerValue.biomarker_id,
             func.max(models.BiomarkerValue.created_at).label("latest_at"),
         )
+        .join(models.Report)
+        .filter(models.Report.user_id == current_user.id)
         .filter(models.BiomarkerValue.is_reviewed.is_(True))
         .filter(models.BiomarkerValue.status.in_(["high", "low"]))
         .group_by(models.BiomarkerValue.biomarker_id)
@@ -181,6 +201,8 @@ def abnormal_summary(db: Session = Depends(get_db)):
     )
     query = (
         db.query(models.BiomarkerValue)
+        .join(models.Report)
+        .filter(models.Report.user_id == current_user.id)
         .join(
             subq,
             (models.BiomarkerValue.biomarker_id == subq.c.biomarker_id)

@@ -1,6 +1,25 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+
+
+class UserRegister(UserBase):
+    password: str = Field(..., min_length=6, max_length=128)
+
+
+class UserLogin(UserBase):
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    username: str
+    created_at: datetime
 
 
 class BiomarkerBase(BaseModel):
@@ -84,6 +103,7 @@ class ReportCreate(BaseModel):
 class ReportOut(ReportBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    user_id: int
     stored_path: str
     error_message: Optional[str] = None
     created_at: datetime

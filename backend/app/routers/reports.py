@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import UPLOAD_DIR
 from app.database import get_db
+from app.services.auth import get_current_user
 from app.services.report_parser import parse_report
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -18,11 +19,23 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 
 
+def _get_user_report(db: Session, report_id: int, user_id: int) -> models.Report:
+    report = (
+        db.query(models.Report)
+        .filter(models.Report.id == report_id, models.Report.user_id == user_id)
+        .first()
+    )
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report
+
+
 @router.post("/upload", response_model=schemas.ReportOut, status_code=status.HTTP_201_CREATED)
 def upload_report(
     file: UploadFile = File(...),
     report_date: str | None = Form(None),
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     if not file.filename:
         raise HTTPException(
@@ -75,6 +88,7 @@ def upload_report(
             pass
 
     report = models.Report(
+        user_id=current_user.id,
         filename=stored_filename,
         original_name=file.filename,
         stored_path=str(stored_path),
@@ -88,26 +102,38 @@ def upload_report(
 
 
 @router.get("", response_model=schemas.ReportListOut)
-def list_reports(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    query = db.query(models.Report).order_by(models.Report.created_at.desc())
+def list_reports(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    query = (
+        db.query(models.Report)
+        .filter(models.Report.user_id == current_user.id)
+        .order_by(models.Report.created_at.desc())
+    )
     total = query.count()
     items = query.offset(skip).limit(limit).all()
     return {"items": items, "total": total}
 
 
 @router.get("/{report_id}", response_model=schemas.ReportDetailOut)
-def get_report(report_id: int, db: Session = Depends(get_db)):
-    report = db.query(models.Report).filter(models.Report.id == report_id).first()
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
-    return report
+def get_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return _get_user_report(db, report_id, current_user.id)
 
 
 @router.post("/{report_id}/parse", response_model=schemas.ParseReportResponse)
-def parse_report_endpoint(report_id: int, db: Session = Depends(get_db)):
-    report = db.query(models.Report).filter(models.Report.id == report_id).first()
-    if not report:
-        raise HTTPException(status_code=404, detail="报告不存在")
+def parse_report_endpoint(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    report = _get_user_report(db, report_id, current_user.id)
 
     try:
         result = parse_report(db, report_id)
@@ -131,10 +157,12 @@ def parse_report_endpoint(report_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_report(report_id: int, db: Session = Depends(get_db)):
-    report = db.query(models.Report).filter(models.Report.id == report_id).first()
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+def delete_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    report = _get_user_report(db, report_id, current_user.id)
 
     try:
         Path(report.stored_path).unlink(missing_ok=True)
