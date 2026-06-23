@@ -7,10 +7,22 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+
+
 class Report(Base):
     __tablename__ = "reports"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     filename = Column(String(255), nullable=False)
     original_name = Column(String(255), nullable=False)
     stored_path = Column(Text, nullable=False)
@@ -22,6 +34,7 @@ class Report(Base):
     created_at = Column(DateTime, default=_utc_now, nullable=False)
     updated_at = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
 
+    user = relationship("User", back_populates="reports")
     values = relationship("BiomarkerValue", back_populates="report", cascade="all, delete-orphan")
 
 

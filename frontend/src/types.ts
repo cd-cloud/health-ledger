@@ -1,5 +1,12 @@
+export interface User {
+  id: number
+  username: string
+  created_at: string
+}
+
 export interface Report {
   id: number
+  user_id: number
   filename: string
   original_name: string
   stored_path: string

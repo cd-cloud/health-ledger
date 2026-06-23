@@ -17,6 +17,10 @@ KIMI_MODEL = os.getenv("KIMI_MODEL", "moonshot-v1-8k")
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "kimi")
 
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
+SESSION_COOKIE_NAME = "session"
+SESSION_MAX_AGE = 60 * 60 * 24 * 7  # 7 天
+
 MEDICAL_DISCLAIMER = (
     "以上分析仅供参考，不构成医疗诊断或治疗建议。"
     "如有异常请咨询专业医生，并以医院出具的正式报告为准。"

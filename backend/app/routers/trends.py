@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.config import MEDICAL_DISCLAIMER
 from app.database import get_db
+from app.services.auth import get_current_user
 from app.services.kimi_provider import KimiProvider
 from app.services.llm_provider import LLMProvider
 from app.services.report_parser import get_llm_provider
@@ -14,22 +15,30 @@ from app.services.report_parser import get_llm_provider
 router = APIRouter(prefix="/trends", tags=["trends"])
 
 
+def _user_values_for_trend(db: Session, user_id: int, biomarker_id: int):
+    return (
+        db.query(models.BiomarkerValue)
+        .filter(models.BiomarkerValue.biomarker_id == biomarker_id)
+        .filter(models.BiomarkerValue.is_reviewed.is_(True))
+        .join(models.Report)
+        .filter(models.Report.user_id == user_id)
+        .order_by(models.Report.report_date.asc())
+    )
+
+
 @router.get("/{biomarker_code}", response_model=schemas.TrendOut)
-def get_trend(biomarker_code: str, db: Session = Depends(get_db)):
+def get_trend(
+    biomarker_code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     biomarker = (
         db.query(models.Biomarker).filter(models.Biomarker.code == biomarker_code).first()
     )
     if not biomarker:
         raise HTTPException(status_code=404, detail="Biomarker not found")
 
-    values = (
-        db.query(models.BiomarkerValue)
-        .filter(models.BiomarkerValue.biomarker_id == biomarker.id)
-        .filter(models.BiomarkerValue.is_reviewed.is_(True))
-        .join(models.Report)
-        .order_by(models.Report.report_date.asc())
-        .all()
-    )
+    values = _user_values_for_trend(db, current_user.id, biomarker.id).all()
 
     points = [
         schemas.TrendPoint(
@@ -50,6 +59,7 @@ def get_trend(biomarker_code: str, db: Session = Depends(get_db)):
 def analyze_trend(
     biomarker_code: str,
     db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
     provider: LLMProvider = Depends(get_llm_provider),
 ):
     biomarker = (
@@ -58,14 +68,7 @@ def analyze_trend(
     if not biomarker:
         raise HTTPException(status_code=404, detail="Biomarker not found")
 
-    values = (
-        db.query(models.BiomarkerValue)
-        .filter(models.BiomarkerValue.biomarker_id == biomarker.id)
-        .filter(models.BiomarkerValue.is_reviewed.is_(True))
-        .join(models.Report)
-        .order_by(models.Report.report_date.asc())
-        .all()
-    )
+    values = _user_values_for_trend(db, current_user.id, biomarker.id).all()
 
     if len(values) < 2:
         analysis = "当前已校对的指标记录不足 2 条，暂无法生成趋势分析。请上传更多报告并完成校对。"

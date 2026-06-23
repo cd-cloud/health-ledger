@@ -51,6 +51,9 @@ KIMI_MODEL=moonshot-v1-8k
 
 # 可选：自定义数据库路径
 # DATABASE_URL=sqlite:///data/healthtracker.db
+
+# 必填：用于加密登录会话 Cookie（生产环境务必修改）
+SECRET_KEY=your-secret-key
 ```
 
 | 变量名 | 说明 | 默认值 |
@@ -60,6 +63,9 @@ KIMI_MODEL=moonshot-v1-8k
 | `KIMI_MODEL` | 使用的模型名称 | `moonshot-v1-8k` |
 | `LLM_PROVIDER` | LLM 提供商，当前仅支持 `kimi` | `kimi` |
 | `DATABASE_URL` | SQLite 数据库 URL | `sqlite:///data/healthtracker.db` |
+| `SECRET_KEY` | 会话 Cookie 签名密钥 | `change-me-in-production` |
+
+**注意**：v0.4.0 引入了用户认证与数据隔离，数据库表结构新增 `users` 表以及 `reports.user_id` 字段。从 v0.3.x 升级时，请删除旧的 `data/healthtracker.db` 并重新启动后端，由系统自动创建新表。
 
 ### OCR 扫描件支持（可选）
 

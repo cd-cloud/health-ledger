@@ -2,9 +2,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.config import SECRET_KEY, SESSION_COOKIE_NAME, SESSION_MAX_AGE
 from app.database import Base, engine
-from app.routers import reports, biomarkers, trends
+from app.routers import auth, biomarkers, reports, trends
 
 
 @asynccontextmanager
@@ -24,7 +26,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Health Tracker MVP",
     description="个人体检指标追踪 MVP API",
-    version="0.1.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -36,6 +38,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    session_cookie=SESSION_COOKIE_NAME,
+    max_age=SESSION_MAX_AGE,
+)
+
+app.include_router(auth.router)
 app.include_router(reports.router)
 app.include_router(biomarkers.router)
 app.include_router(trends.router)
