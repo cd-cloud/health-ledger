@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Trash2, RefreshCw } from 'lucide-react'
+import { Trash2, RefreshCw, Download } from 'lucide-react'
 
-import { listReports, deleteReport, parseReport } from '../api/reports'
+import { listReports, deleteReport, parseReport, exportReportsArchive } from '../api/reports'
+import { downloadBlob } from '../utils/download'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorState from '../components/ErrorState'
 import EmptyState from '../components/EmptyState'
@@ -25,6 +26,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function ReportList() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function load() {
@@ -63,6 +65,19 @@ export default function ReportList() {
     }
   }
 
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const blob = await exportReportsArchive()
+      const timestamp = new Date().toISOString().slice(0, 10)
+      downloadBlob(blob, `health_export_${timestamp}.zip`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '导出失败')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (loading) return <LoadingSpinner message="加载报告列表..." />
   if (error) return <ErrorState title="报告列表加载失败" error={error} onRetry={load} />
 
@@ -70,9 +85,22 @@ export default function ReportList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">报告列表</h2>
-        <Link to="/upload" className="btn-primary">
-          上传报告
-        </Link>
+        <div className="flex items-center gap-3">
+          {reports.length > 0 && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="btn-secondary inline-flex items-center gap-2"
+              title="导出全部报告"
+            >
+              <Download className="w-4 h-4" />
+              {exporting ? '导出中...' : '导出全部'}
+            </button>
+          )}
+          <Link to="/upload" className="btn-primary">
+            上传报告
+          </Link>
+        </div>
       </div>
 
       {reports.length === 0 ? (

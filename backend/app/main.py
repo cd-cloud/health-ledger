@@ -1,12 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.config import SECRET_KEY, SESSION_COOKIE_NAME, SESSION_MAX_AGE
+from app.config import BACKUP_DIR, BACKUP_ENABLED, BACKUP_RETENTION_DAYS, SECRET_KEY, SESSION_COOKIE_NAME, SESSION_MAX_AGE
 from app.database import Base, engine
 from app.routers import auth, biomarkers, reports, trends
+from app.services.backup_scheduler import start_backup_scheduler, stop_backup_scheduler
 
 
 @asynccontextmanager
@@ -20,7 +22,19 @@ async def lifespan(app: FastAPI):
         ensure_biomarkers_in_db(db, BiomarkerNormalizer())
     finally:
         db.close()
-    yield
+
+    scheduler = None
+    if BACKUP_ENABLED and engine.url.database and engine.url.database != ":memory:":
+        scheduler = start_backup_scheduler(
+            src=Path(engine.url.database),
+            dest_dir=BACKUP_DIR,
+            retention_days=BACKUP_RETENTION_DAYS,
+        )
+
+    try:
+        yield
+    finally:
+        stop_backup_scheduler(scheduler)
 
 
 app = FastAPI(

@@ -31,3 +31,10 @@ export async function parseReport(id: number): Promise<{ report_id: number; stat
 export async function deleteReport(id: number): Promise<void> {
   await api.delete(`/reports/${id}`)
 }
+
+export async function exportReportsArchive(): Promise<Blob> {
+  const { data } = await api.get('/reports/export', {
+    responseType: 'blob',
+  })
+  return data
+}

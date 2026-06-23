@@ -1,19 +1,31 @@
+import json
+import logging
 import shutil
 import uuid
+import zipfile
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.config import UPLOAD_DIR
 from app.database import get_db
 from app.services.auth import get_current_user
+from app.services.export import (
+    add_csv_and_json_to_zip,
+    biomarker_value_to_dict,
+    format_datetime,
+    user_biomarker_values_query,
+)
 from app.services.report_parser import parse_report
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+logger = logging.getLogger(__name__)
 
 # 单文件大小限制：50 MB
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
@@ -118,6 +130,69 @@ def list_reports(
     return {"items": items, "total": total}
 
 
+@router.get("/export")
+def export_reports_archive(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """导出当前用户的全部历史报告（PDF 原始文件 + 指标 CSV/JSON）为 ZIP。"""
+    reports = (
+        db.query(models.Report)
+        .filter(models.Report.user_id == current_user.id)
+        .order_by(models.Report.created_at.desc())
+        .all()
+    )
+    values = (
+        user_biomarker_values_query(db, current_user.id)
+        .order_by(models.BiomarkerValue.created_at.desc())
+        .all()
+    )
+    biomarkers = db.query(models.Biomarker).order_by(models.Biomarker.code).all()
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        add_csv_and_json_to_zip(
+            zf, "reports", [_report_to_dict(r) for r in reports]
+        )
+        add_csv_and_json_to_zip(
+            zf, "biomarker_values", [biomarker_value_to_dict(v) for v in values]
+        )
+        add_csv_and_json_to_zip(
+            zf, "biomarkers", [_biomarker_to_dict(b) for b in biomarkers]
+        )
+
+        seen_names: Dict[str, int] = {}
+        for report in reports:
+            pdf_path = Path(report.stored_path)
+            arc_name = f"pdfs/{_unique_pdf_name(report.original_name, seen_names)}"
+            if pdf_path.exists():
+                zf.write(pdf_path, arc_name)
+            else:
+                logger.warning("报告 PDF 文件缺失，已跳过: %s", pdf_path)
+
+        manifest = {
+            "version": "0.4.0",
+            "exported_at": format_datetime(datetime.now()),
+            "username": current_user.username,
+            "report_count": len(reports),
+            "biomarker_value_count": len(values),
+            "biomarker_count": len(biomarkers),
+        }
+        zf.writestr(
+            "manifest.json",
+            json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8"),
+        )
+
+    buffer.seek(0)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"health_export_{current_user.username}_{timestamp}.zip"
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 @router.get("/{report_id}", response_model=schemas.ReportDetailOut)
 def get_report(
     report_id: int,
@@ -172,3 +247,42 @@ def delete_report(
     db.delete(report)
     db.commit()
     return None
+
+
+def _report_to_dict(report: models.Report) -> Dict[str, object]:
+    return {
+        "id": report.id,
+        "user_id": report.user_id,
+        "original_name": report.original_name,
+        "filename": report.filename,
+        "report_date": format_datetime(report.report_date),
+        "status": report.status,
+        "error_message": report.error_message,
+        "created_at": format_datetime(report.created_at),
+        "updated_at": format_datetime(report.updated_at),
+    }
+
+
+def _biomarker_to_dict(biomarker: models.Biomarker) -> Dict[str, object]:
+    return {
+        "id": biomarker.id,
+        "code": biomarker.code,
+        "name": biomarker.name,
+        "unit_standard": biomarker.unit_standard,
+        "category": biomarker.category,
+        "reference_low": biomarker.reference_low,
+        "reference_high": biomarker.reference_high,
+        "direction": biomarker.direction,
+        "description": biomarker.description,
+    }
+
+
+def _unique_pdf_name(original_name: str, seen_names: Dict[str, int]) -> str:
+    base = Path(original_name).name
+    if base not in seen_names:
+        seen_names[base] = 0
+        return base
+    seen_names[base] += 1
+    stem = Path(base).stem
+    suffix = Path(base).suffix
+    return f"{stem}_{seen_names[base]}{suffix}"

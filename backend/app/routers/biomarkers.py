@@ -11,18 +11,9 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
 from app.services.auth import get_current_user
+from app.services.export import biomarker_value_to_dict, user_biomarker_values_query
 
 router = APIRouter(prefix="/biomarkers", tags=["biomarkers"])
-
-
-def _user_values_query(db: Session, user_id: int):
-    """返回仅属于当前用户的指标数值查询。"""
-    return (
-        db.query(models.BiomarkerValue)
-        .join(models.Report)
-        .filter(models.Report.user_id == user_id)
-        .join(models.Biomarker)
-    )
 
 
 @router.get("", response_model=List[schemas.BiomarkerOut])
@@ -40,7 +31,7 @@ def list_biomarker_values(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    query = _user_values_query(db, current_user.id)
+    query = user_biomarker_values_query(db, current_user.id)
 
     if report_id is not None:
         query = query.filter(models.BiomarkerValue.report_id == report_id)
@@ -68,7 +59,7 @@ def export_biomarker_values(
     current_user: models.User = Depends(get_current_user),
 ):
     """导出当前用户的指标数值为 CSV 或 JSON。"""
-    query = _user_values_query(db, current_user.id)
+    query = user_biomarker_values_query(db, current_user.id)
 
     if report_id is not None:
         query = query.filter(models.BiomarkerValue.report_id == report_id)
@@ -83,26 +74,7 @@ def export_biomarker_values(
 
     values = query.order_by(models.BiomarkerValue.created_at.desc()).all()
 
-    records = [
-        {
-            "id": v.id,
-            "report_id": v.report_id,
-            "biomarker_code": v.biomarker.code,
-            "biomarker_name": v.biomarker.name,
-            "original_name": v.original_name,
-            "original_value": v.original_value_text,
-            "original_unit": v.original_unit,
-            "value": v.value,
-            "unit": v.unit,
-            "reference_low": v.reference_low,
-            "reference_high": v.reference_high,
-            "status": v.status,
-            "is_reviewed": v.is_reviewed,
-            "reviewed_at": v.reviewed_at.isoformat() if v.reviewed_at else None,
-            "created_at": v.created_at.isoformat() if v.created_at else None,
-        }
-        for v in values
-    ]
+    records = [biomarker_value_to_dict(v) for v in values]
 
     if format == "json":
         return Response(
@@ -132,7 +104,7 @@ def batch_update_biomarker_values(
     updated = []
     for item in payload.items:
         value = (
-            _user_values_query(db, current_user.id)
+            user_biomarker_values_query(db, current_user.id)
             .filter(models.BiomarkerValue.id == item.id)
             .first()
         )
@@ -155,7 +127,7 @@ def update_biomarker_value(
     current_user: models.User = Depends(get_current_user),
 ):
     value = (
-        _user_values_query(db, current_user.id)
+        user_biomarker_values_query(db, current_user.id)
         .filter(models.BiomarkerValue.id == value_id)
         .first()
     )

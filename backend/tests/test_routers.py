@@ -1,4 +1,6 @@
 import io
+import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -265,6 +267,87 @@ class TestReports:
 
         response = auth_client.get(f"/reports/{report.id}")
         assert response.status_code == 404
+
+    def test_export_archive_requires_login(self, client):
+        response = client.get("/reports/export")
+        assert response.status_code == 401
+
+    def test_export_archive_zip_contains_pdf_and_csv(self, auth_client, db, tmp_path, test_user, sample_biomarkers):
+        pdf_path = tmp_path / "report.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n%%EOF")
+
+        report = models.Report(
+            user_id=test_user.id,
+            filename="report.pdf",
+            original_name="report.pdf",
+            stored_path=str(pdf_path),
+            status="parsed",
+        )
+        db.add(report)
+        db.flush()
+
+        biomarker = db.query(models.Biomarker).filter(models.Biomarker.code == "HGB").first()
+        value = models.BiomarkerValue(
+            report_id=report.id,
+            biomarker_id=biomarker.id,
+            value=140.0,
+            unit="g/L",
+            status="normal",
+            is_reviewed=True,
+        )
+        db.add(value)
+        db.commit()
+
+        response = auth_client.get("/reports/export")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/zip"
+        assert "health_export_" in response.headers["content-disposition"]
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+            names = zf.namelist()
+            assert "reports.csv" in names
+            assert "reports.json" in names
+            assert "biomarker_values.csv" in names
+            assert "biomarker_values.json" in names
+            assert "biomarkers.csv" in names
+            assert "biomarkers.json" in names
+            assert "manifest.json" in names
+            assert "pdfs/report.pdf" in names
+
+            manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+            assert manifest["username"] == test_user.username
+            assert manifest["report_count"] == 1
+            assert manifest["biomarker_value_count"] == 1
+
+    def test_export_archive_is_user_isolated(self, auth_client, db, tmp_path):
+        other_user = models.User(
+            username="otheruser3",
+            hashed_password="dummy",
+        )
+        db.add(other_user)
+        db.commit()
+        db.refresh(other_user)
+
+        pdf_path = tmp_path / "other_report.pdf"
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
+        report = models.Report(
+            user_id=other_user.id,
+            filename="other_report.pdf",
+            original_name="other_report.pdf",
+            stored_path=str(pdf_path),
+            status="pending",
+        )
+        db.add(report)
+        db.commit()
+
+        response = auth_client.get("/reports/export")
+        assert response.status_code == 200
+
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+            names = zf.namelist()
+            assert "pdfs/other_report.pdf" not in names
+            manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+            assert manifest["report_count"] == 0
 
 
 class TestTrends:
