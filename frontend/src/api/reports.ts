@@ -32,9 +32,13 @@ export async function deleteReport(id: number): Promise<void> {
   await api.delete(`/reports/${id}`)
 }
 
-export async function exportReportsArchive(): Promise<Blob> {
-  const { data } = await api.get('/reports/export', {
+export async function exportReportsArchive(): Promise<{ blob: Blob; filename: string }> {
+  const response = await api.get('/reports/export', {
     responseType: 'blob',
   })
-  return data
+  const blob: Blob = response.data
+  const disposition = response.headers['content-disposition'] as string | undefined
+  const match = disposition?.match(/filename="?([^";]+)"?/)
+  const fallback = `health_export_${new Date().toISOString().slice(0, 10)}.zip`
+  return { blob, filename: match?.[1] ?? fallback }
 }

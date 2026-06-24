@@ -68,9 +68,8 @@ export default function ReportList() {
   async function handleExport() {
     setExporting(true)
     try {
-      const blob = await exportReportsArchive()
-      const timestamp = new Date().toISOString().slice(0, 10)
-      downloadBlob(blob, `health_export_${timestamp}.zip`)
+      const { blob, filename } = await exportReportsArchive()
+      downloadBlob(blob, filename)
     } catch (err) {
       alert(err instanceof Error ? err.message : '导出失败')
     } finally {
