@@ -32,6 +32,14 @@
 └── docs/              # 架构文档与示例数据
 ```
 
+## 快速开始
+
+```bash
+# 克隆默认主分支（main），确保获取最新代码
+git clone -b main https://github.com/cd-cloud/health-ledger.git
+cd health-ledger
+```
+
 ## 环境准备
 
 需要 Python 3.10+ 和 Node.js 18+。
