@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   LineChart,
@@ -60,7 +60,7 @@ export default function BiomarkerTrend() {
   const [error, setError] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!code) return
     setLoading(true)
     setError(null)
@@ -72,11 +72,11 @@ export default function BiomarkerTrend() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [code])
 
   useEffect(() => {
     load()
-  }, [code])
+  }, [load])
 
   async function handleAnalyze() {
     if (!code) return
