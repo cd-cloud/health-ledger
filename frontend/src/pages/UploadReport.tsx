@@ -44,7 +44,7 @@ export default function UploadReport() {
         await parseReport(report.id)
         setSuccess('解析完成，正在跳转...')
         navigate(`/reports/${report.id}`)
-      } catch (err) {
+      } catch {
         setError('文件上传成功，但解析失败，请进入报告详情手动重试。')
         navigate(`/reports/${report.id}`)
       }

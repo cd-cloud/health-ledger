@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { TrendingUp, AlertCircle, Download } from 'lucide-react'
 
@@ -34,7 +34,7 @@ export default function BiomarkerList({ abnormalOnly = false }: { abnormalOnly?:
   const [exporting, setExporting] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('')
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -48,11 +48,11 @@ export default function BiomarkerList({ abnormalOnly = false }: { abnormalOnly?:
     } finally {
       setLoading(false)
     }
-  }
+  }, [isAbnormalPage])
 
   useEffect(() => {
     load()
-  }, [isAbnormalPage])
+  }, [load])
 
   const displayedValues = filterStatus
     ? values.filter((v) => v.status === filterStatus)
