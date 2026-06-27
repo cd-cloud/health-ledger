@@ -1,5 +1,11 @@
 import json
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 import pytest
+from alembic import command
+from alembic.config import Config
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -9,8 +15,14 @@ from app.main import app
 from app.services.auth import hash_password
 from app.services.normalizer import BiomarkerNormalizer
 from app.services.report_parser import ensure_biomarkers_in_db
-from fastapi.testclient import TestClient
-from contextlib import asynccontextmanager
+
+
+def _run_migrations_for_database(url: str) -> None:
+    """对指定数据库 URL 执行 Alembic 升级到最新版本。"""
+    alembic_ini = Path(__file__).resolve().parent.parent / "alembic.ini"
+    alembic_cfg = Config(str(alembic_ini))
+    alembic_cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(alembic_cfg, "head")
 
 
 @pytest.fixture(scope="function")
@@ -23,7 +35,7 @@ def db(tmp_path):
     )
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    Base.metadata.create_all(bind=engine)
+    _run_migrations_for_database(f"sqlite:///{db_path.as_posix()}")
     session = TestingSessionLocal()
     try:
         yield session
@@ -43,7 +55,6 @@ def client(db):
 
     @asynccontextmanager
     async def test_lifespan(app):
-        Base.metadata.create_all(bind=db.bind)
         ensure_biomarkers_in_db(db, BiomarkerNormalizer())
         yield
 

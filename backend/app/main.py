@@ -6,14 +6,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import BACKUP_DIR, BACKUP_ENABLED, BACKUP_RETENTION_DAYS, SECRET_KEY, SESSION_COOKIE_NAME, SESSION_MAX_AGE
-from app.database import Base, engine
+from alembic import command
+from alembic.config import Config
+
+from app.database import engine
 from app.routers import auth, biomarkers, reports, trends
 from app.services.backup_scheduler import start_backup_scheduler, stop_backup_scheduler
 
 
+def _run_migrations() -> None:
+    """使用 Alembic 将数据库升级到最新版本。"""
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    _run_migrations()
     from app.database import SessionLocal
     from app.services.report_parser import ensure_biomarkers_in_db
     from app.services.normalizer import BiomarkerNormalizer
