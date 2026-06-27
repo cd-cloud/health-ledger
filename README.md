@@ -86,6 +86,18 @@ alembic upgrade head
 alembic revision --autogenerate -m "描述变更"
 ```
 
+#### 已存在旧数据库的 baseline 处理
+
+如果你此前通过 `Base.metadata.create_all()` 创建过数据库（v0.4.0 之前），且数据库中尚无 `alembic_version` 表，直接运行 `alembic upgrade head` 会因表已存在而失败。请先备份数据，然后执行 baseline 标记：
+
+```bash
+cd backend
+alembic stamp head
+alembic upgrade head
+```
+
+`alembic stamp head` 会将当前数据库结构标记为已处于最新迁移版本，后续模型变更即可正常通过 `alembic upgrade head` 升级。
+
 ### OCR 扫描件支持（可选）
 
 对于扫描件或图片型 PDF，系统支持 OCR 文本兜底。需要额外安装依赖及系统工具：
