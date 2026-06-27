@@ -73,7 +73,30 @@ SECRET_KEY=your-secret-key
 | `DATABASE_URL` | SQLite 数据库 URL | `sqlite:///data/healthtracker.db` |
 | `SECRET_KEY` | 会话 Cookie 签名密钥 | `change-me-in-production` |
 
-**注意**：v0.4.0 引入了用户认证与数据隔离，数据库表结构新增 `users` 表以及 `reports.user_id` 字段。从 v0.3.x 升级时，请删除旧的 `data/healthtracker.db` 并重新启动后端，由系统自动创建新表。
+**注意**：数据库结构变更由 Alembic 迁移脚本管理，禁止通过删除数据库文件来升级。首次启动或拉取新代码后，后端启动时会自动执行迁移；也可手动运行：
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+如需生成新的迁移脚本（模型变更后）：
+
+```bash
+alembic revision --autogenerate -m "描述变更"
+```
+
+#### 已存在旧数据库的 baseline 处理
+
+如果你此前通过 `Base.metadata.create_all()` 创建过数据库（v0.4.0 之前），且数据库中尚无 `alembic_version` 表，直接运行 `alembic upgrade head` 会因表已存在而失败。请先备份数据，然后执行 baseline 标记：
+
+```bash
+cd backend
+alembic stamp head
+alembic upgrade head
+```
+
+`alembic stamp head` 会将当前数据库结构标记为已处于最新迁移版本，后续模型变更即可正常通过 `alembic upgrade head` 升级。
 
 ### OCR 扫描件支持（可选）
 
