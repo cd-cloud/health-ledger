@@ -44,6 +44,7 @@ class BiomarkerValueBase(BaseModel):
     reference_low: Optional[float] = None
     reference_high: Optional[float] = None
     status: Optional[str] = None
+    parse_version: int = 1
     is_reviewed: bool = False
 
 
@@ -93,6 +94,7 @@ class ReportBase(BaseModel):
     original_name: str
     report_date: Optional[datetime] = None
     status: str = "pending"
+    parse_version: int = 1
 
 
 class ReportCreate(BaseModel):

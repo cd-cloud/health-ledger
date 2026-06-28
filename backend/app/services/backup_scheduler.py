@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 def backup_database(src: Path, dest_dir: Path, timestamp: datetime | None = None) -> Path:
-    """将 SQLite 数据库文件复制到备份目录，按日命名。"""
+    """将 SQLite 数据库文件复制到备份目录，按日命名。
+
+    注意：备份文件包含用户敏感健康数据，请妥善保管并限制访问权限。
+    """
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
 

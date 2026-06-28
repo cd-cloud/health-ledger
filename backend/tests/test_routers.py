@@ -204,6 +204,72 @@ class TestReports:
         assert data["status"] == "pending"
         assert data["user_id"] == 1  # test_user.id
 
+    def test_upload_invalid_mime_rejected(self, auth_client):
+        """MIME 类型非 PDF 时应被拒绝。"""
+        response = auth_client.post(
+            "/reports/upload",
+            files={"file": ("report.pdf", io.BytesIO(b"%PDF-1.4"), "text/plain")},
+        )
+        assert response.status_code == 400
+        assert "PDF" in response.json()["detail"]
+
+    def test_upload_renamed_non_pdf_rejected(self, auth_client, tmp_path):
+        """仅修改扩展名为 .pdf 的非 PDF 文件应被魔数校验拒绝。"""
+        fake_path = tmp_path / "fake.pdf"
+        fake_path.write_bytes(b"<html>not a pdf</html>")
+        with open(fake_path, "rb") as f:
+            response = auth_client.post(
+                "/reports/upload",
+                files={"file": ("fake.pdf", f, "application/pdf")},
+            )
+        assert response.status_code == 400
+        detail = response.json()["detail"]
+        assert "PDF" in detail
+        assert "损坏" in detail or "篡改" in detail
+
+    def test_upload_oversized_pdf_rejected_streaming(self, auth_client, monkeypatch):
+        """流式接收阶段超过限额应立即拒绝，不落地完整文件。"""
+        from app.routers import reports as reports_module
+
+        # 将限额临时调小，便于测试
+        monkeypatch.setattr(reports_module, "MAX_UPLOAD_SIZE", 100)
+
+        response = auth_client.post(
+            "/reports/upload",
+            files={"file": ("big.pdf", io.BytesIO(b"%PDF-" + b"x" * 200), "application/pdf")},
+        )
+        assert response.status_code == 400
+        assert "超过" in response.json()["detail"]
+        assert "100" not in response.json()["detail"]  # 错误信息使用 MB 单位
+
+    def test_upload_failure_cleans_temp_file(self, auth_client, tmp_path, monkeypatch):
+        """上传/校验失败后临时文件不应残留在磁盘。"""
+        from app.routers import reports as reports_module
+
+        captured_temp_paths = []
+        original_stream_to_temp = reports_module._stream_to_temp
+
+        def failing_stream_to_temp(source, temp_path, max_size, chunk_size=8192):
+            captured_temp_paths.append(temp_path)
+            # 先写一点内容到临时文件，再抛出异常
+            with open(temp_path, "wb") as f:
+                f.write(b"%PDF-")
+            raise ValueError("forced failure")
+
+        monkeypatch.setattr(
+            reports_module, "_stream_to_temp", failing_stream_to_temp
+        )
+
+        response = auth_client.post(
+            "/reports/upload",
+            files={"file": ("report.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf")},
+        )
+        assert response.status_code == 400
+        for path in captured_temp_paths:
+            assert not path.exists()
+            # 确保对应的正式路径也没有生成
+            assert not Path(str(path)[:-4]).exists()
+
     def test_list_reports_isolated(self, auth_client, db, test_user):
         report = models.Report(
             user_id=test_user.id,

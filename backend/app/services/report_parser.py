@@ -92,6 +92,13 @@ def parse_report(
 
         normalized = normalizer.normalize_extracted(extracted)
 
+        # 同一报告重新解析时清理旧结果，避免趋势/异常摘要重复
+        db.query(models.BiomarkerValue).filter(
+            models.BiomarkerValue.report_id == report.id
+        ).delete(synchronize_session=False)
+
+        report.parse_version += 1
+
         # 写入数据库
         for item in normalized:
             biomarker = (
@@ -113,6 +120,7 @@ def parse_report(
                     reference_low=item["reference_low"],
                     reference_high=item["reference_high"],
                     status=item["status"],
+                    parse_version=report.parse_version,
                     is_reviewed=False,
                 )
             )
