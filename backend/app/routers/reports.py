@@ -1,12 +1,11 @@
 import json
 import logging
-import shutil
 import uuid
 import zipfile
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List
+from typing import BinaryIO, Dict, List
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -29,6 +28,55 @@ logger = logging.getLogger(__name__)
 
 # 单文件大小限制：50 MB
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+
+# 上传文件允许的 MIME 类型
+ALLOWED_PDF_MIME_TYPES = {
+    "application/pdf",
+    "application/x-pdf",
+}
+
+# PDF 文件头魔数（%PDF-）
+PDF_MAGIC = b"%PDF-"
+
+
+def _is_pdf_content(data: bytes) -> bool:
+    """通过文件头魔数判断是否为 PDF 格式。"""
+    return data.startswith(PDF_MAGIC)
+
+
+def _stream_to_temp(
+    source: BinaryIO,
+    temp_path: Path,
+    max_size: int,
+    chunk_size: int = 8192,
+) -> int:
+    """将上传流分块写入临时文件，超过限额时立即抛出异常。
+
+    返回实际写入字节数。
+    """
+    total = 0
+    with open(temp_path, "wb") as buffer:
+        while True:
+            chunk = source.read(chunk_size)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_size:
+                raise ValueError(
+                    f"文件大小超过 {max_size // 1024 // 1024} MB 限制"
+                )
+            buffer.write(chunk)
+    return total
+
+
+def _safe_unlink(path: Path) -> None:
+    """安全删除文件，忽略不存在等异常。"""
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+    except Exception:
+        logger.exception("删除临时文件失败：%s", path)
 
 
 def _get_user_report(db: Session, report_id: int, user_id: int) -> models.Report:
@@ -61,14 +109,30 @@ def upload_report(
             detail="仅支持 PDF 文件，请上传 .pdf 格式的体检报告",
         )
 
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type not in ALLOWED_PDF_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"不支持的文件类型 {content_type}，请上传 PDF 文件",
+        )
+
     ext = Path(file.filename).suffix
     stored_filename = f"{uuid.uuid4().hex}{ext}"
     stored_path = UPLOAD_DIR / stored_filename
+    temp_path = Path(f"{stored_path}.tmp")
 
     try:
-        with open(stored_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # 流式写入临时文件，边写边校验大小，避免大文件完整落地
+        file_size = _stream_to_temp(file.file, temp_path, MAX_UPLOAD_SIZE)
+    except ValueError as exc:
+        # 超过限额或读取失败，清理临时文件
+        _safe_unlink(temp_path)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
+        _safe_unlink(temp_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"保存文件失败：{exc}",
@@ -77,20 +141,36 @@ def upload_report(
         file.file.close()
 
     # 空文件检查
-    file_size = stored_path.stat().st_size
     if file_size == 0:
-        stored_path.unlink(missing_ok=True)
+        _safe_unlink(temp_path)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="上传的文件为空，请检查文件是否损坏",
         )
 
-    if file_size > MAX_UPLOAD_SIZE:
-        stored_path.unlink(missing_ok=True)
+    # 文件头魔数校验：防止仅修改扩展名的伪装文件
+    with open(temp_path, "rb") as f:
+        header = f.read(len(PDF_MAGIC))
+    if not _is_pdf_content(header):
+        _safe_unlink(temp_path)
+        logger.warning(
+            "上传文件扩展名为 .pdf 但文件头不匹配，可能为恶意或损坏文件：%s",
+            file.filename,
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"文件大小超过 {MAX_UPLOAD_SIZE // 1024 // 1024} MB 限制",
+            detail="文件不是有效的 PDF，请检查文件是否损坏或被篡改",
         )
+
+    # 校验通过，移动到正式路径
+    try:
+        temp_path.rename(stored_path)
+    except Exception as exc:
+        _safe_unlink(temp_path)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"归档文件失败：{exc}",
+        ) from exc
 
     parsed_date = None
     if report_date:
@@ -135,7 +215,10 @@ def export_reports_archive(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """导出当前用户的全部历史报告（PDF 原始文件 + 指标 CSV/JSON）为 ZIP。"""
+    """导出当前用户的全部历史报告（PDF 原始文件 + 指标 CSV/JSON）为 ZIP。
+
+    注意：导出的 ZIP 包含用户敏感健康数据，下载后请妥善保管。
+    """
     reports = (
         db.query(models.Report)
         .filter(models.Report.user_id == current_user.id)

@@ -29,6 +29,7 @@ class Report(Base):
     report_date = Column(DateTime, nullable=True)
     status = Column(String(50), default="pending", nullable=False)  # pending / parsed / error
     error_message = Column(Text, nullable=True)
+    parse_version = Column(Integer, default=1, nullable=False)
     _utc_now = partial(datetime.now, timezone.utc)
 
     created_at = Column(DateTime, default=_utc_now, nullable=False)
@@ -73,6 +74,7 @@ class BiomarkerValue(Base):
     reference_low = Column(Float, nullable=True)
     reference_high = Column(Float, nullable=True)
     status = Column(String(20), nullable=True)  # normal / high / low
+    parse_version = Column(Integer, default=1, nullable=False)
 
     is_reviewed = Column(Boolean, default=False, nullable=False)
     reviewed_at = Column(DateTime, nullable=True)

@@ -154,3 +154,46 @@ class TestParseReport:
         db.refresh(sample_report)
         assert sample_report.status == "error"
         assert sample_report.error_message is not None
+
+    def test_parse_report_does_not_duplicate_on_reparse(
+        self, db, sample_report, sample_biomarkers
+    ):
+        """同一报告重复解析时不应追加旧的 BiomarkerValue。"""
+        provider = FakeLLMProvider(
+            extracted=[
+                {
+                    "original_name": "血红蛋白",
+                    "original_value": "14.0",
+                    "original_unit": "g/dL",
+                    "confidence": 0.9,
+                }
+            ]
+        )
+        normalizer = BiomarkerNormalizer()
+
+        # 第一次解析
+        parse_report(db, sample_report.id, normalizer=normalizer, provider=provider)
+        db.refresh(sample_report)
+        assert len(sample_report.values) == 1
+        first_value_id = sample_report.values[0].id
+        first_parse_version = sample_report.parse_version
+
+        # 第二次解析：相同提取结果
+        result = parse_report(db, sample_report.id, normalizer=normalizer, provider=provider)
+        db.refresh(sample_report)
+
+        assert result["status"] == "parsed"
+        assert result["extracted_count"] == 1
+        assert len(sample_report.values) == 1
+        assert sample_report.values[0].parse_version == first_parse_version + 1
+        assert sample_report.parse_version == first_parse_version + 1
+
+    def test_parse_report_increments_parse_version(self, db, sample_report, sample_biomarkers):
+        """每次成功解析应递增 Report.parse_version。"""
+        provider = FakeLLMProvider(extracted=[])
+        provider.is_available = lambda: False
+
+        assert sample_report.parse_version == 1
+        parse_report(db, sample_report.id, provider=provider)
+        db.refresh(sample_report)
+        assert sample_report.parse_version == 2
